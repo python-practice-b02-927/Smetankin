@@ -22,8 +22,8 @@ class ball():
         x - начальное положение мяча по горизонтали
         y - начальное положение мяча по вертикали
         """
-        self.x = x
-        self.y = y
+        self.x = g1.x_down
+        self.y = g1.y_down
         self.r = 10
         self.vx = 0
         self.vy = 0
@@ -81,7 +81,11 @@ class gun():
         self.f2_on = 0
         self.an = 1
         self.tang=math.tan(self.an)
-        self.id = canv.create_line(20,450,50,420,width=7) # FIXME: don't know how to set it...
+        self.id = canv.create_line(20,450,50,420,width=7) 
+        self.x_down = 20 
+        self.y_down = 450
+        self.x_up = 50
+        self.y_up = 420
 
     def fire2_start(self, event):
         self.f2_on = 1
@@ -92,10 +96,13 @@ class gun():
         Происходит при отпускании кнопки мыши.
         Начальные значения компонент скорости мяча vx и vy зависят от положения мыши.
         """
-        global balls, bullet
+        global balls, bullet,k
+        k = 0
         bullet += 1
         new_ball = ball()
         new_ball.r += 5
+        new_ball.x = self.x_up
+        new_ball.y = self.y_up
         self.an = math.atan((event.y-new_ball.y) / (event.x-new_ball.x))
         new_ball.vx = self.f2_power * math.cos(self.an)
         new_ball.vy = - self.f2_power * math.sin(self.an)
@@ -103,19 +110,52 @@ class gun():
         self.f2_on = 0
         self.f2_power = 10
 
+    def canv_coord(self):
+        global k
+        print("NOw")
+        canv.coords(
+        self.id,
+        self.x_down,
+        self.y_down,
+        self.x_up,
+        self.y_up )
+        print(self.x_down)
+
+    def gun_move_right(self, rightflag):
+        if rightflag:
+            self.x_down +=1
+            self.x_up +=1
+            self.an = math.atan((event.y-self.y_up) / (event.x-self.x_up))
+            self.canv_coord()
+
+    def gun_move_left(self, leftflag):
+        if leftflag:
+            self.x_down -= 1
+            self.x_up -=1
+            self.an = math.atan((event.y-self.y_up) / (event.x-self.x_up))
+            self.canv_coord()
+
+
+
+        
+
     def targetting(self, event=0):
         """Прицеливание. Зависит от положения мыши."""
         if event:
-            self.an = math.atan((event.y-450) / (event.x-20))
+            self.an = math.atan((event.y-self.y_up) / (event.x-self.x_up))
             self.tang=math.tan(self.an)
         if self.f2_on:
             canv.itemconfig(self.id, fill='orange')
         else:
             canv.itemconfig(self.id, fill='black')
-        canv.coords(self.id, 20, 450,
-                    20 + max(self.f2_power, 20) * math.cos(self.an),
-                    450 + max(self.f2_power, 20) * math.sin(self.an)
+        canv.coords(self.id, self.x_down, self.y_down,
+                    self.x_up + max(self.f2_power, 20) * math.cos(self.an),
+                    self.y_up + max(self.f2_power, 20) * math.sin(self.an)
                     )
+        """self.x_up + max(self.f2_power, 20) * math.cos(self.an),
+                    self.y_up + max(self.f2_power, 20) * math.sin(self.an)"""
+        #self.x_down += max(self.f2_power, 20) * math.cos(self.an)
+        #self.y_down += max(self.f2_power, 20) * math.sin(self.an)
 
     def power_up(self):
         if self.f2_on:
@@ -219,15 +259,41 @@ def new_game(event=""):
     t2.new_target()
     targ = [t1]
     targ += [t2]
+    leftflag = False
+    rightflag = False
+    def keyOn(event):
+        global leftflag
+        global rightflag
+        if event.keysym == "Left":
+            print("start left")
+            leftflag = True
+            g1.gun_move_left(leftflag)
+        
+        elif event.keysym == "Right":
+            print("start right")
+            rightflag = True
+            g1.gun_move_right(rightflag)
+        else:
+            leftflag = False
+            g1.gun_move_left(leftflag)
+            rightflag = False
+            g1.gun_move_right(rightflag)
+
+        
 
     bullet = 0
     balls = []
+    canv.bind('<Key>',keyOn)
+    canv.focus_set()
     canv.bind('<Button-1>', g1.fire2_start)
     canv.bind('<ButtonRelease-1>', g1.fire2_end)
     canv.bind('<Motion>', g1.targetting)
     z = 0.03
-    
+    leftflag = False
+    rightflag = False
     button_pressed = True
+
+    
     
     def final_button_released(event):
         print("I AM FUCKING RELEASED!!!!111!!1!!")
@@ -238,6 +304,7 @@ def new_game(event=""):
 
 
     while t1.live or t2.live or balls or button_pressed:
+        
         if t1.live==1 or t2.live==1:
             t1.move()
             t2.move()
@@ -259,9 +326,11 @@ def new_game(event=""):
                     targ=[]
                 for i in balls:
                     canv.delete(i.id)
-                    balls = []     
+                    balls = []   
+                g1.x_down, g1.y_down, g1.x_up, g1.y_up = 20,450,50,420
+                canv.coords(g1.id,20,450,50,420 )
                 
-                canv.itemconfig(screen1, text='Вы уничтожили цель за ' + str(bullet) + 'выстрелов')
+                canv.itemconfig(screen1, text='Вы уничтожили цели за ' + str(bullet) + 'выстрелов')
                 
                 canv.bind('<Button-1>',"")
                 canv.bind('<ButtonRelease-1>',final_button_released)
